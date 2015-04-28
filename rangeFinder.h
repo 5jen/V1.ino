@@ -19,6 +19,12 @@ void getSideDistance()
 				sideWallAngle = atan (11.0 / abs(frontDist - rearDist));
 				sideWallDistance = (sin(sideWallAngle) * frontDist + sin(sideWallAngle) * rearDist) / 2.0; 
 			}
+			else
+			{
+				if(!wallBreak) stop_move = true;
+				
+				wallBreak = true;
+			}
 		}
 		else
 			sideWallDistance = frontDist;

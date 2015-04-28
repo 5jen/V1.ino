@@ -1,25 +1,24 @@
 //#include "Definitions.h"
 
-void stepperSetup() {
+void flameSetup() {
 
-	pinMode(stepper_dir,OUTPUT);
-  	pinMode(stepper_step,OUTPUT);
-  	stepper.setMaxSpeed(1000);
-  	stepper.setAcceleration(1000);
-  	stepper.moveTo(16);
-}
-
-void GoStepper() {
-	if(stepper.distanceToGo() == 0){
-			stepper.move(16);
-	}
-
+	stepper.setAcceleration(1500);
+		flame.zero();
 }
 
 void checkFlame() {
-	
-		//flame.scan();
-		if(low  < flameVal){
+	// lcd.print("CF");
+	 flame.run();
+		
+	if (flame.isDone()){
+		// lcd.setCursor(0,0);
+		// lcd.print("DONE");
+		
+		flame.getFlamePosition(&high, &low, &distanceToFlame, &theta);
+		flame.scan(-55, 200, 300);
+	}
+
+	if(high  > flameVal){
 			if(!flameDetected) stop_move = true;
 			flameDetected = true;
 	}

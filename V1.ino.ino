@@ -1,3 +1,5 @@
+#include <SpinningFlameThing.h>
+
 #include <MiniMotorControllerDefinitions.h>
 #include <MotorControllerMaster.h>
 
@@ -11,9 +13,12 @@
 #include <LiquidCrystal.h>
 #include <L3G.h>
 
+#include "SpinningFlameThing.h"
+
 #include "Definitions.h"
 #include "flame.h"
 #include "rangeFinder.h"
+long time;
 void setup()
 {	
 
@@ -28,14 +33,14 @@ void setup()
   //gyro.writeReg(L3G_CTRL_REG4, 0x20); // 2000 dps full scale
 	//gyro.writeReg(L3G_CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 100 Hz
 
-
+	flameSetup();
 	Wire.begin();
 	c.begin();
 
 	frontIR.begin(front_ir_pin);
 	rearIR.begin(rear_ir_pin);
 
-	Serial.begin(9600);
+	Serial.begin(115200);
 	
 	c.setAcceleration(1000,1000,1000,1000);
 	c.brake();
@@ -50,18 +55,21 @@ void setup()
 
 void loop()
 {	
+	Serial.println(millis() - time);
+		time = millis();
+
 	// gyro.read();
 	// getCoordinate();
 	sendHb();
 	checkCliff();
 	pingSonar();
-	//checkFlame();
-	getReferencePosition();
-	getCurrentPosition();
+	checkFlame();
+	//getReferencePosition();
+	//getCurrentPosition();
 	//Go();
-	checkSideWall();
+	//checkSideWall();
 	lcd.setCursor(0,1);
-	 lcd.print(sideWallDistance);
+	 lcd.print(flameDetected);
 	// lcd.print(" ,");
 	//c.goVelocity(300,0);
 	//flame.getFlamePosition(&high, &low, &distanceToFlame, &theta);
@@ -72,7 +80,7 @@ void loop()
 	 // lcd.setCursor(0,1);
 	 //  lcd.println(analogRead(light_sensor_pin) > lightSensorVal);
 	//Serial.println(sideWallAngle);
-	Serial.println( 1 );
+	//Serial.println( 1 );
 	//c.goVelocity(-100,0);
 
 	if(flameDetected)
@@ -81,7 +89,7 @@ void loop()
 	}
 	else
 	{
-		wallFollowNavigator();
+		//wallFollowNavigator();
 	}
 	
 }
@@ -117,7 +125,7 @@ void checkCliff()
 {
 	if (millis() - lastcc > 20)
 	{
-		Serial.println(analogRead(light_sensor_pin));
+		//Serial.println(analogRead(light_sensor_pin));
 		lastcc = millis();
 		if(analogRead(light_sensor_pin) > lightSensorVal)
 		{
@@ -135,7 +143,7 @@ void checkCliff()
 
 void sendHb()
 {
-	if (millis() - lasthb > 50){
+	if (millis() - lasthb > 4000){
 		//Serial.println("inhb");
 		c.heartbeat();
 		lasthb = millis();	
@@ -207,27 +215,30 @@ void Go()
                  if(c.isStandby())
                  {
                  	driveState = goStraight;
-					rightIsOpen = false;
+					wallBreak = false;
                  }
 			}
 			break;
 
 		case turnToCandle:
 		lcd.setCursor(0,0);
-			lcd.println("turnToOpenArea");
+			lcd.println("turnToCandle");
 			if(theta > 0) 
 			{
 				if (reference_r < theta)
 					c.goVelocity (0,10);
-				else
-				driveState = brake;
+				else{
+					driveState = brake;
+					facingCandle = true;
+				}
 			}
 			else if(theta < 0){
 				if(reference_r > theta)
 					c.goVelocity(0,-10);			    
-				else
-				driveState = brake;
-			    
+				else{
+					driveState = brake;
+					facingCandle = true;
+				}		    
 			}
 			
 
@@ -311,10 +322,10 @@ void wallFollowNavigator()
 		    driveState = turnLeft_90;
       }	
 	
-	if(!facingCliff && !atCliff && !nearFrontWall && !rightIsOpen && driveState != alignWall){
+	if(!facingCliff && !atCliff && !nearFrontWall && !wallBreak){
 		
 
-	    if(abs(frontDist - rearDist) != 0 ){
+	    if(abs(frontDist - rearDist) != 0  ){
 			driveState = alignWall;
 
 		}
@@ -325,13 +336,24 @@ void wallFollowNavigator()
 			if(driveState != followWall) getReferencePos = true;
 			driveState = followWall;
 		}
-		else if (sideWallDistance > 30){
-			lcd.setCursor(0,1);
-			lcd.println("farFromwall, turnR");
-			driveState = turnRight_90;
-		}		
+			
 
 		else driveState = goStraight;
+	}
+	if(wallBreak)
+	{
+
+	 	if (sideWallDistance > 30){
+			lcd.setCursor(0,1);
+			lcd.println("wallBreak");
+			if(stop_move){
+				driveState = brake;
+				if(c.isStandby()){
+					stop_move = false;
+					driveState = turnRight_90;
+				}
+			}
+		}	
 	}
 }
 
@@ -347,9 +369,12 @@ void flameNavigator()
 		driveState = turnToCandle;
 	}
 
-	if(driveState == brake){
+	if(driveState == brake && !nearFrontWall && facingCandle){
 		//put off the candle
+		driveState = goStraight;
 	}
+	if(nearFrontWall)
+	driveState = brake;
 
 
 }

@@ -24,10 +24,6 @@ volatile  int frontDist;
 volatile  int rearDist;
 volatile double sideWallDistance;
 
-const int frontIRXpos = 3;
-const int rearIRXpos = 3;
-const int frontIRYpos = 5.5;
-const int rearIRYpos  = -5.5;
 
 double sideWallAngle;
 
@@ -46,22 +42,22 @@ const int lightSensorVal = 500;
 /*
 //stepper
 */
-const int stepper_step = 2;
-const int stepper_dir = 3;
+// const int stepper_step = 2;
+// const int stepper_dir = 3;
 
-AccelStepper stepper(AccelStepper::DRIVER ,stepper_step, stepper_dir );
+AccelStepper stepper(AccelStepper::DRIVER,53,52); 
 
 /*
 //flame Sensor
 */
 const int l_flame_sensor_pin = A5;
 const int r_flame_sensor_pin = A6;
-const int flameVal = 500;
+const int flameVal = 200;
 int high;
 int low;
-int distanceToFlame;
+ int distanceToFlame;
 int theta;
-//SpinningFlameThing flame(&stepper,-85, 250, 200*8, A1, A2);
+SpinningFlameThing flame(&stepper, -55, 220, 200*4, A1, A2, 28);
 
 
 /*
@@ -94,7 +90,8 @@ int lastfc = 0;
 */
 enum dirveStates{goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, followWall, alignWall, backup} driveState;
 
-bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos , stop_move, flameDetected ,backUp= false;
+bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos 
+, stop_move, flameDetected ,backUp, facingCandle, wallBreak= false;
 
 long  x, y = 0;
 
