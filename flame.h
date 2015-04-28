@@ -9,11 +9,14 @@ void flameSetup() {
 void checkFlame() {
 	// lcd.print("CF");
 	 flame.run();
-		
+
 	if (flame.isDone()){
 		// lcd.setCursor(0,0);
 		// lcd.print("DONE");
-		
+			cnt ++;
+			if(cnt == 2)
+			 fc = false;
+
 		flame.getFlamePosition(&high, &low, &distanceToFlame, &theta);
 		flame.scan(-55, 200, 300);
 	}

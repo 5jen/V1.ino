@@ -7,11 +7,11 @@
 #define SAFE_DISTANCE 20
 
 const int trigger_pin = 22;
-const int echo_pin =  23;
+const int echo_pin =  2;
 
 unsigned int frontWallDistance;
 
-NewPing sonar(trigger_pin, echo_pin);
+NewPing sonar(trigger_pin, echo_pin, 100);
 
 
 /*
@@ -32,6 +32,7 @@ volatile const int sideLimit = 10;
 
 DistanceGP2Y0A21YK frontIR;
 DistanceGP2Y0A21YK rearIR;
+DistanceGP2Y0A21YK s;
 
 int y1,y2;
 /*
@@ -71,13 +72,13 @@ long l, r, reference_l, reference_r = 0;		//angle turned in degrees, distance tr
 /*
 //time check
 */
-int lasthb = 0;
-int lastRightTurn = 0;
-int lastEncoderSample = 0;
-int lastPing = 0;
-int lastir = 0;
-int lastcc = 0;
-int lastfc = 0;
+unsigned long lasthb = 0;
+unsigned long lastRightTurn = 0;
+unsigned long lastEncoderSample = 0;
+unsigned long lastPing = 0;
+unsigned long lastir = 0;
+unsigned long lastcc = 0;
+unsigned long lastfc = 0;
 
 
 
@@ -91,7 +92,7 @@ int lastfc = 0;
 enum dirveStates{goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, followWall, alignWall, backup} driveState;
 
 bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos 
-, stop_move, flameDetected ,backUp, facingCandle, wallBreak= false;
+, stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc= false;
 
 long  x, y = 0;
 
@@ -110,6 +111,8 @@ void getCoordinate(){
 }
 L3G gyro;
 
-
+const float kp = 1.3;
+const float kd = 2.2;
+int cnt;
 
 #endif

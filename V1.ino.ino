@@ -12,6 +12,7 @@
 #include <DistanceGP2Y0A21YK_LUTs.h>
 #include <LiquidCrystal.h>
 #include <L3G.h>
+#include <MemoryFree.h>
 
 #include "SpinningFlameThing.h"
 
@@ -39,65 +40,79 @@ void setup()
 
 	frontIR.begin(front_ir_pin);
 	rearIR.begin(rear_ir_pin);
-
+	s.begin(A5);
 	Serial.begin(115200);
 	
-	c.setAcceleration(1000,1000,1000,1000);
+	c.setAcceleration(2000,2000,2000,2000);
 	c.brake();
 	//c.goVelocity(100, 0);
 	//delay(200);
 	lcd.begin(16,2);
 	driveState = goStraight;
-	Serial.println(1);
+	pinMode(9, OUTPUT);
+	digitalWrite(9, LOW);
 
 	
 }
 
 void loop()
-{	
-	Serial.println(millis() - time);
-		time = millis();
+
+{
+ 
+	if(fc ){
+			checkFlame();
+			driveState = goStraight;
+
+
+	}
+	else{
+	// Serial.println(millis() - time);
+	// 	time = millis();
 
 	// gyro.read();
 	// getCoordinate();
 	sendHb();
 	checkCliff();
 	pingSonar();
-	checkFlame();
-	//getReferencePosition();
-	//getCurrentPosition();
-	//Go();
-	//checkSideWall();
-	lcd.setCursor(0,1);
-	 lcd.print(flameDetected);
-	// lcd.print(" ,");
-	//c.goVelocity(300,0);
-	//flame.getFlamePosition(&high, &low, &distanceToFlame, &theta);
+	echoCheck();
+	getReferencePosition();
+	getCurrentPosition();
 
-	 // lcd.print(y);
+	Go();
+	checkSideWall();
+	// lcd.setCursor(0,1);
+	// 	  lcd.print(r);
+
+	// lcd.print(" ,");
+
+	//   lcd.print(reference_r);
 	 // lcd.print(" ,");
 	 //lcd.println((int)gyro.g.z);
-	 // lcd.setCursor(0,1);
-	 //  lcd.println(analogRead(light_sensor_pin) > lightSensorVal);
-	//Serial.println(sideWallAngle);
+	  // lcd.setCursor(0,1);
+	  // lcd.println(analogRead(light_sensor_pin) > lightSensorVal);
+	//Serial.println(analogRead(A5));
 	//Serial.println( 1 );
 	//c.goVelocity(-100,0);
 
 	if(flameDetected)
 	{
 		flameNavigator();
+		// lcd.setCursor(0,1);
+		// lcd.print("flameDetected");	
 	}
 	else
 	{
-		//wallFollowNavigator();
+		wallFollowNavigator();
 	}
-	
+	}
 }
 
 void pingSonar()
 {
 	if (millis() - lastPing > 100)
 	{
+		//frontWallDistance = s.getDistanceCentimeter();
+
 		lastPing = millis();
 		sonar.ping_timer(echoCheck);
 	}		
@@ -189,13 +204,17 @@ void Go()
 			lcd.println("turnLeft");
 	    	c.goVelocity(0, 20);          
         	getCurrentPosition();
-			if (r - reference_r  > 80)
+			if (r - reference_r  > 90)
 			{
 			//Serial.println("complete turn");
+
 				 c.goVelocity(0,0);
                  if(c.isStandby())
                  {
-                 	driveState = goStraight;
+                 	//driveState = goStraight;
+                 	fc = true;
+                 	cnt = 0;
+
 
                  	if(facingCliff) atCliff =true;
 					nearFrontWall = false;
@@ -222,18 +241,21 @@ void Go()
 
 		case turnToCandle:
 		lcd.setCursor(0,0);
-			lcd.println("turnToCandle");
+			lcd.println(theta);
 			if(theta > 0) 
 			{
-				if (reference_r < theta)
+				if (r - reference_r < theta){
 					c.goVelocity (0,10);
+					
+				}
 				else{
 					driveState = brake;
 					facingCandle = true;
+
 				}
 			}
 			else if(theta < 0){
-				if(reference_r > theta)
+				if(reference_r  - r < theta)
 					c.goVelocity(0,-10);			    
 				else{
 					driveState = brake;
@@ -249,8 +271,8 @@ void Go()
 			break;
 		
 		case followWall:
-			lcd.setCursor(0,0);
-			lcd.println("followWall");
+			// lcd.setCursor(0,0);
+			// lcd.println("followWall");
 			if(abs(reference_r - r) > 5)
 			{
 				driveState = alignWall;
@@ -270,8 +292,8 @@ void Go()
 			break;
 
 		case alignWall:
-			lcd.setCursor(0,0);
-			lcd.println("alignWall");
+			// lcd.setCursor(0,0);
+			// lcd.println("alignWall");
 			if(frontDist - rearDist <= -1 )
 			 	c.goVelocity(90, map(frontDist - rearDist,-8, -1, 20,10));
 			 
@@ -293,11 +315,11 @@ void Go()
 
 void wallFollowNavigator() 
 {
-	if(facingCliff || nearFrontWall)
+		if(facingCliff || nearFrontWall)
 	{
         if(stop_move){
-        	lcd.setCursor(0,1);
-			lcd.println("brake");
+   //      	lcd.setCursor(0,1);
+			// lcd.println("brake");
         	driveState = brake;
 			if(c.isStandby())
 			{
@@ -307,8 +329,8 @@ void wallFollowNavigator()
 
 		else if(backUp)
 		{	
-			lcd.setCursor(0,1);
-			lcd.println("backUp");
+			// lcd.setCursor(0,1);
+			// lcd.println("backUp");
 			if(reference_l - l < 50)//5cm
 				driveState = backup;	
 			else
@@ -322,59 +344,62 @@ void wallFollowNavigator()
 		    driveState = turnLeft_90;
       }	
 	
-	if(!facingCliff && !atCliff && !nearFrontWall && !wallBreak){
+	if(!facingCliff && !atCliff && !nearFrontWall && !rightIsOpen && driveState != alignWall){
 		
 
-	    if(abs(frontDist - rearDist) != 0  ){
+	    if(abs(frontDist - rearDist) != 0 ){
 			driveState = alignWall;
 
 		}
 		else if(abs(sideWallDistance - sideLimit) > 1.5 )
 		{
-			lcd.setCursor(0,1);
-			lcd.println("enterFollw wall");
+			// lcd.setCursor(0,1);
+			// lcd.println("enterFollw wall");
 			if(driveState != followWall) getReferencePos = true;
 			driveState = followWall;
 		}
-			
+		else if (sideWallDistance > 30){
+			// lcd.setCursor(0,1);
+			// lcd.println("farFromwall, turnR");
+			driveState = turnRight_90;
+		}		
 
 		else driveState = goStraight;
-	}
-	if(wallBreak)
-	{
-
-	 	if (sideWallDistance > 30){
-			lcd.setCursor(0,1);
-			lcd.println("wallBreak");
-			if(stop_move){
-				driveState = brake;
-				if(c.isStandby()){
-					stop_move = false;
-					driveState = turnRight_90;
-				}
-			}
-		}	
 	}
 }
 
 void flameNavigator() 
 {
 	if(stop_move){
+
 		driveState = brake;
-		if(c.isStandby()) stop_move = false;
+		if(c.isStandby()) {
+			//fc = true;
+			stop_move = false;
+		}
+
+	}
+	else if(driveState == brake && !nearFrontWall && facingCandle){
+				driveState = goStraight;
 	}
 	else {
-		if (driveState != turnToCandle)
+		if (driveState != turnToCandle && !facingCandle)	{
+			// lcd.setCursor(0,1);
+			// lcd.println("hahahaha");
 			getReferencePos = true;
-		driveState = turnToCandle;
+
+
+		}
+			
+			driveState = turnToCandle;
 	}
 
-	if(driveState == brake && !nearFrontWall && facingCandle){
-		//put off the candle
-		driveState = goStraight;
-	}
+	
+
 	if(nearFrontWall)
 	driveState = brake;
+	digitalWrite(9, HIGH);
+
 
 
 }
