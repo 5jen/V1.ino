@@ -89,7 +89,8 @@ unsigned long lastfc = 0;
 /*
 //state machine
 */
-enum dirveStates{goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, followWall, alignWall, backup} driveState;
+enum driveStates {goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, followWall, alignWall, backup} ;
+driveStates prevState , driveState;
 
 bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos 
 , stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc= false;

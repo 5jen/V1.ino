@@ -51,7 +51,6 @@ void setup()
 	driveState = goStraight;
 	pinMode(9, OUTPUT);
 	digitalWrite(9, LOW);
-
 	
 }
 
@@ -77,7 +76,6 @@ void loop()
 	echoCheck();
 	getReferencePosition();
 	getCurrentPosition();
-
 	Go();
 	checkSideWall();
 	// lcd.setCursor(0,1);
@@ -96,12 +94,14 @@ void loop()
 
 	if(flameDetected)
 	{
+		//prevState = driveState;
 		flameNavigator();
 		// lcd.setCursor(0,1);
 		// lcd.print("flameDetected");	
 	}
 	else
 	{
+		//prevState = driveState;
 		wallFollowNavigator();
 	}
 	}
@@ -396,9 +396,20 @@ void flameNavigator()
 
 	
 
-	if(nearFrontWall)
-	driveState = brake;
-	digitalWrite(9, HIGH);
+	if(nearFrontWall){
+		driveState = brake;
+		digitalWrite(9, HIGH);
+		getCoordinate();
+		lcd.setCursor(0,1);
+		  lcd.print(x);
+
+	lcd.print(" ,");
+
+	  lcd.print(y);
+
+
+	}
+	
 
 
 
