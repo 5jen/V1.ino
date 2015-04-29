@@ -79,6 +79,7 @@ unsigned long lastPing = 0;
 unsigned long lastir = 0;
 unsigned long lastcc = 0;
 unsigned long lastfc = 0;
+unsigned long fanTime = 0;
 
 
 
@@ -89,13 +90,13 @@ unsigned long lastfc = 0;
 /*
 //state machine
 */
-enum driveStates {goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, followWall, alignWall, backup} ;
+enum driveStates {goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, followWall, alignWall, backup, turnLeft, turnRight} ;
 driveStates prevState , driveState;
 
 bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos 
-, stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc, _start , startButton , complete = false;
+, stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc, _start , startButton , complete, spin, spinComplete = false;
 
-long  x, xCoord, y, yCoord  = 0;
+long  x, xCoord, y, yCoord , distToCandle = 0;
 /*
 //motor controller
 */
@@ -118,9 +119,12 @@ const float kd = 2.2;
 
 
 int cnt;
+int candleAngle;
+int fcnt = 0;
 void isStart(){
 	_start = true;
 	startButton = true;
+
 
 }
 

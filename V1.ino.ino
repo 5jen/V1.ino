@@ -48,8 +48,11 @@ void setup()
 	//c.goVelocity(100, 0);
 	//delay(200);
 	lcd.begin(16,2);
+	startButton = false;
 	driveState = goStraight;
 	pinMode(9, OUTPUT);
+	pinMode(29, OUTPUT);
+	digitalWrite(29, LOW);
 	digitalWrite(9, LOW);
 	pinMode(19, INPUT_PULLUP);
 	 attachInterrupt(4, isStart, FALLING);
@@ -70,7 +73,8 @@ void loop()
 
 	}
 	
-	else{ //navigation
+	else
+	{ //navigation
 
 	// Serial.println(millis() - time);
 	// 	time = millis();
@@ -101,6 +105,7 @@ void loop()
 
 		if(flameDetected && !complete)
 		{
+			digitalWrite(29, HIGH);
 		//prevState = driveState;
 			flameNavigator();
 		// lcd.setCursor(0,1);
@@ -112,8 +117,12 @@ void loop()
 			wallFollowNavigator();
 		}
 		else if (complete)
-		{
-			
+		{	
+			digitalWrite(29, LOW);
+			// if (l > distToCandle) driveState = backup;
+			// else driveState = brake;
+
+
 		}
 	}
 }
@@ -140,6 +149,7 @@ void echoCheck()
 			if(nearFrontWall == false)
 			{	
 				stop_move = true;
+				
 				getReferencePos = true;
 			}
 			nearFrontWall = true;
@@ -271,6 +281,7 @@ void Go()
 				else{
 					driveState = brake;
 					facingCandle = true;
+					l = distToCandle;
 				}		    
 			}
 			
@@ -314,8 +325,14 @@ void Go()
 			driveState = goStraight;
 			 
 			break;
+		case turnRight:
+			c.goVelocity(0,-40);
+			break;
+		case turnLeft:
+			c.goVelocity(0,40);
+			break;
 		case backup:
-			c.goVelocity(-100,0);
+			c.goVelocity(-50,0);
 			break;
 
 
@@ -393,38 +410,67 @@ void flameNavigator()
 	else if(driveState == brake && !nearFrontWall && facingCandle){
 				driveState = goStraight;
 	}
-	else {
-		if (driveState != turnToCandle && !facingCandle)	{
+	else if(!facingCandle){
+		if (driveState != turnToCandle && !facingCandle){
 			// lcd.setCursor(0,1);
 			// lcd.println("hahahaha");
 			getReferencePos = true;
-
-
 		}
 			
-			driveState = turnToCandle;
+		driveState = turnToCandle;
 	}
 
 	
 
-	if(nearFrontWall){
-		driveState = brake;
+	if(nearFrontWall && !spin){
 		digitalWrite(9, HIGH);
+		if (fcnt == 0)
+			fanTime = millis();
+		driveState = brake;
+
 		getCoordinate();
 		lcd.setCursor(0,1);
 
-		lcd.print("FlameLOC:(");
-		lcd.print(xCoord/100);
+		lcd.print("(");
+		lcd.print(xCoord + cos(theta*3.14/180) * 270 );
 
-		lcd.print("cm ,");
+		lcd.print(",");
 
-	  	lcd.print(yCoord/100);
-	  	lcd.print("cm)");
+	  	lcd.print(yCoord + sin(theta * 3.14/180) *270);
+	  	lcd.print(",");
 
-	  	complete = true;
+	  	lcd.print(245);
+
+	  	lcd.print(")");
+	  	spin = true;
+	  	getReferencePos = true;
+	  	getReferencePosition();
+	  	candleAngle = reference_r;
+	  	fcnt ++;
 
 	}
 	
+	if(spin){
+
+		
+		 if (candleAngle - r < 30 && !spinComplete){
+			driveState = turnRight;
+		}
+		
+		else {
+			driveState = brake;
+			spinComplete = true;
+
+		}
+
+	  	if (millis() - fanTime > 5000)
+	  	{
+	  		digitalWrite(9, LOW);
+			complete = true;
+	  		
+	  	}
+
+	}
 
 
 
