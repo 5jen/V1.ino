@@ -62,6 +62,7 @@ void setup()
 void loop()
 
 {
+	//Serial.println(digitalRead(19));
 	// Serial.println(millis() - time);
 	// 	time = millis();
 	if(!startButton){} //if start button is not pressed, do nothing
@@ -89,7 +90,7 @@ void loop()
 		getCurrentPosition();
 		Go();
 		checkSideWall();
-	// lcd.setCursor(0,1);
+	// lcd.setCursor(0,0);
 	// 	  lcd.print(r);
 
 	// lcd.print(" ,");
@@ -105,7 +106,7 @@ void loop()
 
 		if(flameDetected && !complete)
 		{
-			digitalWrite(29, HIGH);
+			//digitalWrite(29, HIGH);
 		//prevState = driveState;
 			flameNavigator();
 		// lcd.setCursor(0,1);
@@ -118,10 +119,36 @@ void loop()
 		}
 		else if (complete)
 		{	
+			if(millis() - lastCoord > 500)
+			getCoordinate();
 			digitalWrite(29, LOW);
-			// if (l > distToCandle) driveState = backup;
-			// else driveState = brake;
 
+			if (reference_r - r < theta + 20  && !backToOrigin) 
+			{driveState = turnRight;
+				
+			}
+			else if (!backToOrigin){
+				driveState = brake;
+				if(c.isStandby()){
+					backToOrigin = true;
+					driveState = goStraight;
+				}
+			}
+			// else if(abs(x) <50){
+			// 	driveState = brake;
+			// 	arrivedOrigin = true;
+			// }
+			else if(!arrivedOrigin){
+				if(!nearFrontWall && !findWall){
+
+				}
+				else {
+					findWall = true;
+					wallFollowNavigator();
+
+				}
+			}
+			
 
 		}
 	}
@@ -326,10 +353,10 @@ void Go()
 			 
 			break;
 		case turnRight:
-			c.goVelocity(0,-40);
+			c.goVelocity(0,-30);
 			break;
 		case turnLeft:
-			c.goVelocity(0,40);
+			c.goVelocity(0,30);
 			break;
 		case backup:
 			c.goVelocity(-50,0);
@@ -359,7 +386,7 @@ void wallFollowNavigator()
 		{	
 			// lcd.setCursor(0,1);
 			// lcd.println("backUp");
-			if(reference_l - l < 50)//5cm
+			if(reference_l - l < 80)//5cm
 				driveState = backup;	
 			else
 			{ 
@@ -429,7 +456,9 @@ void flameNavigator()
 		driveState = brake;
 
 		getCoordinate();
-		lcd.setCursor(0,1);
+		xCoord = x;
+		yCoord = y;
+		lcd.setCursor(0,0);
 
 		lcd.print("(");
 		lcd.print(xCoord + cos(theta*3.14/180) * 270 );
@@ -438,7 +467,7 @@ void flameNavigator()
 
 	  	lcd.print(yCoord + sin(theta * 3.14/180) *270);
 	  	lcd.print(",");
-
+	  	lcd.setCursor(0,1);
 	  	lcd.print(245);
 
 	  	lcd.print(")");
@@ -453,7 +482,7 @@ void flameNavigator()
 	if(spin){
 
 		
-		 if (candleAngle - r < 30 && !spinComplete){
+		 if (candleAngle - r < 20 && !spinComplete){
 			driveState = turnRight;
 		}
 		
@@ -467,7 +496,8 @@ void flameNavigator()
 	  	{
 	  		digitalWrite(9, LOW);
 			complete = true;
-	  		
+			getReferencePos = true;
+
 	  	}
 
 	}

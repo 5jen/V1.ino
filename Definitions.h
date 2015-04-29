@@ -4,7 +4,7 @@
 /*
 // ultrasonics
 */
-#define SAFE_DISTANCE 20
+#define SAFE_DISTANCE 23
 
 const int trigger_pin = 22;
 const int echo_pin =  2;
@@ -28,7 +28,7 @@ volatile double sideWallDistance;
 double sideWallAngle;
 
 const int OpenIrValue = 30 ;
-volatile const int sideLimit = 10;
+volatile const int sideLimit = 12;
 
 DistanceGP2Y0A21YK frontIR;
 DistanceGP2Y0A21YK rearIR;
@@ -80,6 +80,7 @@ unsigned long lastir = 0;
 unsigned long lastcc = 0;
 unsigned long lastfc = 0;
 unsigned long fanTime = 0;
+unsigned long lastCoord = 0;
 
 
 
@@ -94,7 +95,8 @@ enum driveStates {goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, fo
 driveStates prevState , driveState;
 
 bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos 
-, stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc, _start , startButton , complete, spin, spinComplete = false;
+, stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc, _start ,
+ startButton , complete, spin, spinComplete, backToOrigin , arrivedOrigin, findWall= false;
 
 long  x, xCoord, y, yCoord , distToCandle = 0;
 /*
@@ -109,8 +111,7 @@ LiquidCrystal lcd(40,41,42,43,44,45);
 
 void getCoordinate(){
 	c.getGlobalPosition(&x, &y);
-	xCoord = x;
-	yCoord = y;
+	
 }
 L3G gyro;
 
