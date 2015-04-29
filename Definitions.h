@@ -4,7 +4,7 @@
 /*
 // ultrasonics
 */
-#define SAFE_DISTANCE 23
+#define SAFE_DISTANCE 20
 
 const int trigger_pin = 22;
 const int echo_pin =  2;
@@ -28,7 +28,7 @@ volatile double sideWallDistance;
 double sideWallAngle;
 
 const int OpenIrValue = 30 ;
-volatile const int sideLimit = 12;
+volatile const int sideLimit = 10;
 
 DistanceGP2Y0A21YK frontIR;
 DistanceGP2Y0A21YK rearIR;
