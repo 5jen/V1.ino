@@ -93,10 +93,9 @@ enum driveStates {goStraight, turnLeft_90, turnRight_90, turnToCandle, brake, fo
 driveStates prevState , driveState;
 
 bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos 
-, stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc= false;
+, stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc, _start , startButton , complete = false;
 
-long  x, y = 0;
-
+long  x, xCoord, y, yCoord  = 0;
 /*
 //motor controller
 */
@@ -109,11 +108,20 @@ LiquidCrystal lcd(40,41,42,43,44,45);
 
 void getCoordinate(){
 	c.getGlobalPosition(&x, &y);
+	xCoord = x;
+	yCoord = y;
 }
 L3G gyro;
 
 const float kp = 1.3;
 const float kd = 2.2;
+
+
 int cnt;
+void isStart(){
+	_start = true;
+	startButton = true;
+
+}
 
 #endif

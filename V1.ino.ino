@@ -41,7 +41,7 @@ void setup()
 	frontIR.begin(front_ir_pin);
 	rearIR.begin(rear_ir_pin);
 	s.begin(A5);
-	Serial.begin(115200);
+	Serial.begin(9600);
 	
 	c.setAcceleration(2000,2000,2000,2000);
 	c.brake();
@@ -51,33 +51,40 @@ void setup()
 	driveState = goStraight;
 	pinMode(9, OUTPUT);
 	digitalWrite(9, LOW);
+	pinMode(19, INPUT_PULLUP);
+	 attachInterrupt(4, isStart, FALLING);
 	
 }
 
 void loop()
 
 {
+	// Serial.println(millis() - time);
+	// 	time = millis();
+	if(!startButton){} //if start button is not pressed, do nothing
  
-	if(fc ){
-			checkFlame();
-			driveState = goStraight;
+	else if(fc ){	//  do flame check
+		checkFlame();
+		driveState = goStraight;
 
 
 	}
-	else{
+	
+	else{ //navigation
+
 	// Serial.println(millis() - time);
 	// 	time = millis();
 
 	// gyro.read();
 	// getCoordinate();
-	sendHb();
-	checkCliff();
-	pingSonar();
-	echoCheck();
-	getReferencePosition();
-	getCurrentPosition();
-	Go();
-	checkSideWall();
+		sendHb();
+		checkCliff();
+		pingSonar();
+		echoCheck();
+		getReferencePosition();
+		getCurrentPosition();
+		Go();
+		checkSideWall();
 	// lcd.setCursor(0,1);
 	// 	  lcd.print(r);
 
@@ -92,18 +99,22 @@ void loop()
 	//Serial.println( 1 );
 	//c.goVelocity(-100,0);
 
-	if(flameDetected)
-	{
+		if(flameDetected && !complete)
+		{
 		//prevState = driveState;
-		flameNavigator();
+			flameNavigator();
 		// lcd.setCursor(0,1);
 		// lcd.print("flameDetected");	
-	}
-	else
-	{
+		}
+		else if(!complete)
+		{
 		//prevState = driveState;
-		wallFollowNavigator();
-	}
+			wallFollowNavigator();
+		}
+		else if (complete)
+		{
+			
+		}
 	}
 }
 
@@ -214,7 +225,7 @@ void Go()
                  	//driveState = goStraight;
                  	fc = true;
                  	cnt = 0;
-
+                 	_start = false;
 
                  	if(facingCliff) atCliff =true;
 					nearFrontWall = false;
@@ -344,7 +355,7 @@ void wallFollowNavigator()
 		    driveState = turnLeft_90;
       }	
 	
-	if(!facingCliff && !atCliff && !nearFrontWall && !rightIsOpen && driveState != alignWall){
+	if(!_start && !facingCliff && !atCliff && !nearFrontWall && !rightIsOpen && driveState != alignWall){
 		
 
 	    if(abs(frontDist - rearDist) != 0 ){
@@ -401,12 +412,16 @@ void flameNavigator()
 		digitalWrite(9, HIGH);
 		getCoordinate();
 		lcd.setCursor(0,1);
-		  lcd.print(x);
 
-	lcd.print(" ,");
+		lcd.print("FlameLOC:(");
+		lcd.print(xCoord/100);
 
-	  lcd.print(y);
+		lcd.print("cm ,");
 
+	  	lcd.print(yCoord/100);
+	  	lcd.print("cm)");
+
+	  	complete = true;
 
 	}
 	
