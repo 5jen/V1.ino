@@ -23,16 +23,11 @@ long time;
 void setup()
 {	
 
-	// if (!gyro.init())
-	// {
-	// 	Serial.println("Failed to autodetect gyro type!");
-	// 	while (1);
-	// }
-	// gyro.init();
+	compass.init();
+	compass.enableDefault();
 
-	// gyro.enableDefault();
-  //gyro.writeReg(L3G_CTRL_REG4, 0x20); // 2000 dps full scale
-	//gyro.writeReg(L3G_CTRL_REG1, 0x0F); // normal power mode, all axes enabled, 100 Hz
+	compass.m_min = (LSM303::vector<int16_t>){ +1762.5,   -722, -25055.5};
+	compass.m_max = (LSM303::vector<int16_t>){ +3138.5,   +488, -23394.5};
 
 	flameSetup();
 	Wire.begin();
@@ -45,8 +40,7 @@ void setup()
 	
 	c.setAcceleration(2000,2000,2000,2000);
 	c.brake();
-	//c.goVelocity(100, 0);
-	//delay(200);
+	
 	lcd.begin(16,2);
 	startButton = false;
 	driveState = goStraight;
@@ -55,33 +49,29 @@ void setup()
 	digitalWrite(29, LOW);
 	digitalWrite(9, LOW);
 	pinMode(19, INPUT_PULLUP);
-	 attachInterrupt(4, isStart, FALLING);
+	attachInterrupt(4, isStart, FALLING);
 	
 }
 
 void loop()
 
 {
-	//Serial.println(digitalRead(19));
-	// Serial.println(millis() - time);
-	// 	time = millis();
-	if(!startButton){} //if start button is not pressed, do nothing
- 
-	else if(fc ){	//  do flame check
+	
+	if(!startButton){
+
+	} //if start button is not pressed, do nothing
+
+ 	else if (angleError){ //if IMU angle does not match odometry, stop  
+ 		driveState = brake;
+ 	}
+	else if(fc ){	//  if fc is true, do flame check
 		checkFlame();
 		driveState = goStraight;
-
-
 	}
 	
 	else
 	{ //navigation
 
-	// Serial.println(millis() - time);
-	// 	time = millis();
-
-	// gyro.read();
-	// getCoordinate();
 		sendHb();
 		checkCliff();
 		pingSonar();
@@ -90,88 +80,79 @@ void loop()
 		getCurrentPosition();
 		Go();
 		checkSideWall();
-	// lcd.setCursor(0,0);
-	// 	  lcd.print(r);
 
-	// lcd.print(" ,");
 
-	//   lcd.print(reference_r);
-	 // lcd.print(" ,");
-	 //lcd.println((int)gyro.g.z);
-	  // lcd.setCursor(0,1);
-	  // lcd.println(analogRead(light_sensor_pin) > lightSensorVal);
-	//Serial.println(analogRead(A5));
-	//Serial.println( 1 );
-	//c.goVelocity(-100,0);
-
-		if(flameDetected && !complete)
+		if(flameDetected && !complete)// if flame is detected and flame has not been put off
 		{
-			//digitalWrite(29, HIGH);
-		//prevState = driveState;
-			flameNavigator();
-		// lcd.setCursor(0,1);
-		// lcd.print("flameDetected");	
+			digitalWrite(29, HIGH);//triget the alarm
+			flameNavigator();	//navigate to flame
 		}
-		else if(!complete)
+
+		else if(!complete) // if flame has not been put off
 		{
-		//prevState = driveState;
-			wallFollowNavigator();
+			wallFollowNavigator();// flollow the wall
 		}
-		else if (complete)
+
+		else if (complete)//if flame has been put off 
 		{	
-			if(millis() - lastCoord > 500)
+			if(millis() - lastCoord > 500) //get robot's coordinates for every 500 ms
 			getCoordinate();
-			digitalWrite(29, LOW);
 
-			if (reference_r - r < theta + 20  && !backToOrigin) 
-			{driveState = turnRight;
-				
+			digitalWrite(29, LOW); //disable the alarm
+
+			if (reference_r - r < theta + 20  && !backToOrigin) //if still facing the candle, turn to the wall(which is guranteed to be the rightslde)
+			{driveState = turnRight;				
 			}
-			else if (!backToOrigin){
+
+			else if (!backToOrigin){// if just turned from candle to wall, go straight
 				driveState = brake;
 				if(c.isStandby()){
 					backToOrigin = true;
 					driveState = goStraight;
 				}
 			}
-			// else if(abs(x) <50){
-			// 	driveState = brake;
-			// 	arrivedOrigin = true;
-			// }
+
+			else if(abs(x) <20){ //if the x coordinate is close to the origin position, stop
+				driveState = brake;
+				arrivedOrigin = true;
+			}
+
 			else if(!arrivedOrigin){
-				if(!nearFrontWall && !findWall){
+				// if at the middle of nowhere, just go straight unless there's somthing at front
+				if(!nearFrontWall&& !facingCliff && sideWallDistance > 10 && !findWall){
 
 				}
+				//follw the wall
 				else {
 					findWall = true;
 					wallFollowNavigator();
 
 				}
-			}
-			
-
+			}			
 		}
 	}
 }
 
+
+// detect obstacle every 100 ms
 void pingSonar()
 {
 	if (millis() - lastPing > 100)
 	{
-		//frontWallDistance = s.getDistanceCentimeter();
-
 		lastPing = millis();
 		sonar.ping_timer(echoCheck);
 	}		
 }
+
 
 void echoCheck()
 {	
 	if(sonar.check_timer())
 	{
 		frontWallDistance = sonar.ping_result / US_ROUNDTRIP_CM;
-		
-		if(frontWallDistance < SAFE_DISTANCE )//and if flame is not close by!! 
+
+		//if too close to front wall, stop and turn left
+		if(frontWallDistance < SAFE_DISTANCE )	
 		{	
 			if(nearFrontWall == false)
 			{	
@@ -188,8 +169,9 @@ void checkCliff()
 {
 	if (millis() - lastcc > 20)
 	{
-		//Serial.println(analogRead(light_sensor_pin));
 		lastcc = millis();
+
+		//if at cliff, backUp and then turn left
 		if(analogRead(light_sensor_pin) > lightSensorVal)
 		{
 			if(facingCliff == false) 
@@ -204,20 +186,20 @@ void checkCliff()
 	}
 }
 
+//sent hb message to mini
 void sendHb()
 {
 	if (millis() - lasthb > 4000){
-		//Serial.println("inhb");
 		c.heartbeat();
 		lasthb = millis();	
 	}
 }
 
+//get the reference position(angle) before turns
 void getReferencePosition()
 {
 	if(getReferencePos)
 	{
-		//Serial.println("getref");
 		c.getEncoder(&l, &r);
 		reference_l = l;
 		reference_r = r;
@@ -225,199 +207,178 @@ void getReferencePosition()
 	} 
 }
 
-
+//get the current robot position(angle)
 void getCurrentPosition()
 {
-	//Serial.println("getcur");
 	if(millis() - lastEncoderSample > 20 ) 
-    {
+	{
 		c.getEncoder(&l, &r);	
 		lastEncoderSample = millis();	
 	}
 }
 
+
 void Go()
 {
 	switch (driveState) {
-	    case goStraight:
-	    //Serial.println("straight");
-	    lcd.setCursor(0,0);
-			lcd.println("goStraight");
-		    c.goVelocity(100, 0);
-	    	break;
-	    
-	    case turnLeft_90:
-	    	//Serial.println("im turning");
-	    	lcd.setCursor(0,0);
-			lcd.println("turnLeft");
-	    	c.goVelocity(0, 20);          
-        	getCurrentPosition();
-			if (r - reference_r  > 90)
-			{
-			//Serial.println("complete turn");
+		case goStraight:
 
-				 c.goVelocity(0,0);
-                 if(c.isStandby())
-                 {
-                 	//driveState = goStraight;
-                 	fc = true;
+		c.goVelocity(100, 0);
+		break;
+
+		case turnLeft_90:
+
+	    	c.goVelocity(0, 20);			//turn left          
+	    	getCurrentPosition();
+
+ 			//if current angle is not 90 degree from reference, turn left
+ 			if (r - reference_r  > 90)
+ 			{
+ 				c.goVelocity(0,0);
+ 				if(c.isStandby())			
+ 				{
+
+                 	fc = true;			//look for flame each time it turns left
                  	cnt = 0;
                  	_start = false;
 
                  	if(facingCliff) atCliff =true;
-					nearFrontWall = false;
-					facingCliff = false;
+                 	nearFrontWall = false;
+                 	facingCliff = false;
                  }
-				
-			}	
-	      	break;
-	    
-	    case turnRight_90:
-	    lcd.setCursor(0,0);
-			lcd.println("turnRight");
-	    	c.goVelocity(0, -20);          
-			if (reference_r - r > 80)
-			{
-				c.goVelocity(0,0);
-                 if(c.isStandby())
-                 {
-                 	driveState = goStraight;
-					wallBreak = false;
-                 }
-			}
-			break;
 
-		case turnToCandle:
-		lcd.setCursor(0,0);
-			lcd.println(theta);
-			if(theta > 0) 
-			{
-				if (r - reference_r < theta){
-					c.goVelocity (0,10);
-					
-				}
-				else{
-					driveState = brake;
-					facingCandle = true;
+             }	
+             break;
 
-				}
-			}
-			else if(theta < 0){
-				if(reference_r  - r < theta)
-					c.goVelocity(0,-10);			    
-				else{
-					driveState = brake;
-					facingCandle = true;
-					l = distToCandle;
-				}		    
-			}
-			
+             case turnRight_90:
+             c.goVelocity(0, -20);    
+	    	//if current angle is not 90 degree from reference, turn left
+	    	if (reference_r - r > 90)
+	    	{
+	    		c.goVelocity(0,0);
+	    		if(c.isStandby())
+	    		{
+	    			driveState = goStraight;
+	    			wallBreak = false;
+	    		}
+	    	}
+	    	break;
 
-			break;
+
+	    	case turnToCandle:
+	    	lcd.setCursor(0,0);
+	    	lcd.println(theta);
+
+ 			//if current angle does not match the angle measured from , turn left
+ 			if (r - reference_r < theta){
+ 				c.goVelocity (0,10);
+
+ 			}
+			//stop when it's facing the candle
+			else{
+				driveState = brake;
+				facingCandle = true;
+
+			}
+		}
+
+
+
+		break;
 		
 		case brake:
-			c.goVelocity(0,0);
-			break;
+		c.goVelocity(0,0);
+		break;
 		
-		case followWall:
-			// lcd.setCursor(0,0);
-			// lcd.println("followWall");
-			if(abs(reference_r - r) > 5)
-			{
-				driveState = alignWall;
+		case followWall:			//turn to or away the wall, speed is relatvie to the distance from wall
+		if(abs(reference_r - r) > 5)
+		{
+			driveState = alignWall;
 
-			}
-			else 
-			{
-				if(sideWallDistance - sideLimit < -1.5)
-			 		c.goVelocity(90, map(sideWallDistance - sideLimit, -10,-1, 20,10));
-			 
-				else if(sideWallDistance - sideLimit > 1.5)
-			 		c.goVelocity(90, map(sideWallDistance - sideLimit, 10,1, -20, -10));
-			}
-			 	
+		}
+		else 
+		{
+			if(sideWallDistance - sideLimit < -1.5)
+			c.goVelocity(90, map(sideWallDistance - sideLimit, -10,-1, 20,10));
+
+			else if(sideWallDistance - sideLimit > 1.5)
+			c.goVelocity(90, map(sideWallDistance - sideLimit, 10,1, -20, -10));
+		}
 
 
-			break;
 
-		case alignWall:
-			// lcd.setCursor(0,0);
-			// lcd.println("alignWall");
-			if(frontDist - rearDist <= -1 )
-			 	c.goVelocity(90, map(frontDist - rearDist,-8, -1, 20,10));
-			 
-			else if(frontDist - rearDist >= 1 )
-			 	c.goVelocity(90, map(frontDist - rearDist, 8, 1, -20, -10));
-			else
-			driveState = goStraight;
-			 
-			break;
+		break;
+
+		case alignWall:	//turn untill the robot is parallel to the wall
+
+		if(frontDist - rearDist <= -1 )
+		c.goVelocity(90, map(frontDist - rearDist,-8, -1, 20,10));
+
+		else if(frontDist - rearDist >= 1 )
+		c.goVelocity(90, map(frontDist - rearDist, 8, 1, -20, -10));
+		else
+		driveState = goStraight;
+
+		break;
 		case turnRight:
-			c.goVelocity(0,-30);
-			break;
+		c.goVelocity(0,-30);
+		break;
 		case turnLeft:
-			c.goVelocity(0,30);
-			break;
+		c.goVelocity(0,30);
+		break;
 		case backup:
-			c.goVelocity(-50,0);
-			break;
+		c.goVelocity(-50,0);
+		break;
 
 
-	    default:
-	    	c.brake();
+		default:
+		c.brake();
 	}
 }
 
 void wallFollowNavigator() 
 {
-		if(facingCliff || nearFrontWall)
+
+	if(facingCliff || nearFrontWall)
 	{
-        if(stop_move){
-   //      	lcd.setCursor(0,1);
-			// lcd.println("brake");
-        	driveState = brake;
+		//stop completely before it turns
+		if(stop_move){
+			driveState = brake;
 			if(c.isStandby())
 			{
 				stop_move = false;
 			}
 		}
-
+		//in case of flame, back up before it turns
 		else if(backUp)
 		{	
-			// lcd.setCursor(0,1);
-			// lcd.println("backUp");
 			if(reference_l - l < 80)//5cm
-				driveState = backup;	
+			driveState = backup;	
 			else
 			{ 
 				backUp = false;
 				stop_move = true;
-				//getReferencePos = true;
 			}
 		}
 		else
-		    driveState = turnLeft_90;
-      }	
+		//turn left_90;
+		driveState = turnLeft_90;
+	}
+
+
 	
 	if(!_start && !facingCliff && !atCliff && !nearFrontWall && !rightIsOpen && driveState != alignWall){
 		
-
-	    if(abs(frontDist - rearDist) != 0 ){
+		//if robot does not parallel with wall, drivestate set to alignwall
+		if(abs(frontDist - rearDist) != 0 ){
 			driveState = alignWall;
-
 		}
+		//if robot is too far or too close to the wall, turn to or away fromwall
 		else if(abs(sideWallDistance - sideLimit) > 1.5 )
 		{
-			// lcd.setCursor(0,1);
-			// lcd.println("enterFollw wall");
 			if(driveState != followWall) getReferencePos = true;
 			driveState = followWall;
-		}
-		else if (sideWallDistance > 30){
-			// lcd.setCursor(0,1);
-			// lcd.println("farFromwall, turnR");
-			driveState = turnRight_90;
-		}		
+		}	
 
 		else driveState = goStraight;
 	}
@@ -425,84 +386,97 @@ void wallFollowNavigator()
 
 void flameNavigator() 
 {
+	//stop completely 
 	if(stop_move){
-
 		driveState = brake;
 		if(c.isStandby()) {
-			//fc = true;
 			stop_move = false;
 		}
 
 	}
+	//if the robot is facing candle, drive to it
 	else if(driveState == brake && !nearFrontWall && facingCandle){
-				driveState = goStraight;
+		driveState = goStraight;
 	}
+
+	//if it is not facing candle, turn to candle
 	else if(!facingCandle){
 		if (driveState != turnToCandle && !facingCandle){
-			// lcd.setCursor(0,1);
-			// lcd.println("hahahaha");
+			
 			getReferencePos = true;
 		}
-			
+
 		driveState = turnToCandle;
 	}
 
 	
-
+	//if reach the candle base, and didn't spined
 	if(nearFrontWall && !spin){
+		//turn on the fan
 		digitalWrite(9, HIGH);
+
 		if (fcnt == 0)
-			fanTime = millis();
+		fanTime = millis();
 		driveState = brake;
 
 		getCoordinate();
 		xCoord = x;
 		yCoord = y;
-		lcd.setCursor(0,0);
 
+		//estimate candle hight with intensity
+		zCoord = high.map(300, 700, 170, 300);
+
+		//print candle location
+		lcd.setCursor(0,0);
 		lcd.print("(");
 		lcd.print(xCoord + cos(theta*3.14/180) * 270 );
 
 		lcd.print(",");
 
-	  	lcd.print(yCoord + sin(theta * 3.14/180) *270);
-	  	lcd.print(",");
-	  	lcd.setCursor(0,1);
-	  	lcd.print(245);
+		lcd.print(yCoord + sin(theta * 3.14/180) *270);
+		lcd.print(",");
+		lcd.setCursor(0,1);
+		lcd.print(zCoord);
 
-	  	lcd.print(")");
-	  	spin = true;
-	  	getReferencePos = true;
-	  	getReferencePosition();
-	  	candleAngle = reference_r;
-	  	fcnt ++;
+		lcd.print(")");
+		spin = true;
+		getReferencePos = true;
+		getReferencePosition();
+		candleAngle = reference_r;
+		fcnt ++;
 
-	}
-	
-	if(spin){
-
-		
-		 if (candleAngle - r < 20 && !spinComplete){
-			driveState = turnRight;
 		}
-		
+
+	if(spin){
+		//turn 20 degree in case the fan does not face the flame directly
+		if (candleAngle - r < 20 && !spinComplete){
+			driveState = turnRight;
+		}		
 		else {
 			driveState = brake;
 			spinComplete = true;
-
 		}
 
-	  	if (millis() - fanTime > 5000)
-	  	{
-	  		digitalWrite(9, LOW);
+		//if the fan is turned on for 5 sec, turn off the fan. assume flame has been put off.
+		if (millis() - fanTime > 5000)
+		{
+			digitalWrite(9, LOW);
 			complete = true;
 			getReferencePos = true;
-
-	  	}
-
+		}
 	}
+}
 
 
+	void checkIMU(){
+		if(millis() - lasthb > 1000){
+			compass.read();
+			angle = compass.heading();
+			getCurrentPosition();
+		if (abs(angle - r ) > 50)	//if IMU value is 50 degree off with odometry, somthing is wrong
+		angleError = true;	
+	}
+	
 
 }
-	
+

@@ -1,4 +1,3 @@
-//#include "Definitions.h"
 
 void flameSetup() {
 
@@ -7,12 +6,10 @@ void flameSetup() {
 }
 
 void checkFlame() {
-	// lcd.print("CF");
 	 flame.run();
 
 	if (flame.isDone()){
-		// lcd.setCursor(0,0);
-		// lcd.print("DONE");
+			//scan twice for flame
 			cnt ++;
 			if(cnt == 2)
 			 fc = false;
@@ -21,6 +18,8 @@ void checkFlame() {
 		flame.scan(-55, 200, 300);
 	}
 
+
+	//if the  value from the flame sensor is high enough, flame must been detected
 	if(high  > flameVal){
 			if(!flameDetected) stop_move = true;
 			flameDetected = true;

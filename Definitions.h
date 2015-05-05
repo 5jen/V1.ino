@@ -43,8 +43,7 @@ const int lightSensorVal = 500;
 /*
 //stepper
 */
-// const int stepper_step = 2;
-// const int stepper_dir = 3;
+
 
 AccelStepper stepper(AccelStepper::DRIVER,53,52); 
 
@@ -85,8 +84,6 @@ unsigned long lastCoord = 0;
 
 
 
-//int irMap[2][11] ={{5,6,7,8,9,10,11,12,13,14,15},{399,340,287,260,240,212,189,175,165,153,146}};
-
 
 /*
 //state machine
@@ -98,22 +95,25 @@ bool facingCliff, nearFrontWall, rightIsOpen, atCliff, getReferencePos
 , stop_move, flameDetected ,backUp, facingCandle, wallBreak, fc, _start ,
  startButton , complete, spin, spinComplete, backToOrigin , arrivedOrigin, findWall= false;
 
-long  x, xCoord, y, yCoord , distToCandle = 0;
+long  x, xCoord, y, yCoord , distToCandle, zCoord = 0;
 /*
 //motor controller
 */
-// RegulatedMotor m1(&encoder1,7,6,10);
-// RegulatedMotor m2(&encoder2,8,11,9);
+
 MotorControllerMaster c;
-// KinematicController kc(&m1,&m2,1,-1,225,75,64*50);
 
 LiquidCrystal lcd(40,41,42,43,44,45);
 
 void getCoordinate(){
 	c.getGlobalPosition(&x, &y);
 	
+	
 }
-L3G gyro;
+/*
+//IMU
+*/
+angle;
+bool angleError;
 
 const float kp = 1.3;
 const float kd = 2.2;
