@@ -80,6 +80,7 @@ unsigned long lastcc = 0;
 unsigned long lastfc = 0;
 unsigned long fanTime = 0;
 unsigned long lastCoord = 0;
+unsigned long lastimu = 0;
 
 
 
@@ -106,13 +107,14 @@ LiquidCrystal lcd(40,41,42,43,44,45);
 
 void getCoordinate(){
 	c.getGlobalPosition(&x, &y);
-	
+
 	
 }
 /*
 //IMU
 */
-angle;
+LSM303 compass;
+int angle;
 bool angleError;
 
 const float kp = 1.3;

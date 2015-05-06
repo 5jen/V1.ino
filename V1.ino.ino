@@ -13,6 +13,8 @@
 #include <LiquidCrystal.h>
 #include <L3G.h>
 #include <MemoryFree.h>
+#include <LSM303.h>
+
 
 #include "SpinningFlameThing.h"
 
@@ -80,6 +82,7 @@ void loop()
 		getCurrentPosition();
 		Go();
 		checkSideWall();
+		checkIMU();
 
 
 		if(flameDetected && !complete)// if flame is detected and flame has not been put off
@@ -280,7 +283,7 @@ void Go()
 				facingCandle = true;
 
 			}
-		}
+		
 
 
 
@@ -310,7 +313,6 @@ void Go()
 		break;
 
 		case alignWall:	//turn untill the robot is parallel to the wall
-
 		if(frontDist - rearDist <= -1 )
 		c.goVelocity(90, map(frontDist - rearDist,-8, -1, 20,10));
 
@@ -318,14 +320,16 @@ void Go()
 		c.goVelocity(90, map(frontDist - rearDist, 8, 1, -20, -10));
 		else
 		driveState = goStraight;
-
 		break;
+
 		case turnRight:
 		c.goVelocity(0,-30);
 		break;
+
 		case turnLeft:
 		c.goVelocity(0,30);
 		break;
+
 		case backup:
 		c.goVelocity(-50,0);
 		break;
@@ -334,6 +338,7 @@ void Go()
 		default:
 		c.brake();
 	}
+
 }
 
 void wallFollowNavigator() 
@@ -392,7 +397,6 @@ void flameNavigator()
 		if(c.isStandby()) {
 			stop_move = false;
 		}
-
 	}
 	//if the robot is facing candle, drive to it
 	else if(driveState == brake && !nearFrontWall && facingCandle){
@@ -401,10 +405,9 @@ void flameNavigator()
 
 	//if it is not facing candle, turn to candle
 	else if(!facingCandle){
-		if (driveState != turnToCandle && !facingCandle){
-			
+		
+		if (driveState != turnToCandle && !facingCandle)		
 			getReferencePos = true;
-		}
 
 		driveState = turnToCandle;
 	}
@@ -424,7 +427,8 @@ void flameNavigator()
 		yCoord = y;
 
 		//estimate candle hight with intensity
-		zCoord = high.map(300, 700, 170, 300);
+		
+		zCoord = map(high,300, 700, 170, 300);
 
 		//print candle location
 		lcd.setCursor(0,0);
@@ -468,11 +472,14 @@ void flameNavigator()
 }
 
 
-	void checkIMU(){
-		if(millis() - lasthb > 1000){
-			compass.read();
-			angle = compass.heading();
-			getCurrentPosition();
+void checkIMU(){
+	if(millis() - lastimu > 1000){
+		lastimu = millis();
+		
+		compass.read();					//read compass value
+		angle = compass.heading();
+		getCurrentPosition();
+		
 		if (abs(angle - r ) > 50)	//if IMU value is 50 degree off with odometry, somthing is wrong
 		angleError = true;	
 	}
